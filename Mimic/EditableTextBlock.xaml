@@ -1,0 +1,44 @@
+﻿<UserControl x:Class="Mimic.EditableTextBlock"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:Mimic"
+	xmlns:converters="clr-namespace:Mimic.Converters"
+    PreviewMouseLeftButtonDown="Control_PreviewMouseLeftButtonDown"
+    IsKeyboardFocusWithinChanged="Control_IsKeyboardFocusWithinChanged" Name="Control">
+	<UserControl.Resources>
+		<converters:VisibilityConverter x:Key="VisibilityConverter" />
+	</UserControl.Resources>
+	<StackPanel SnapsToDevicePixels="true">
+		<Label Name="Label" SnapsToDevicePixels="true"
+		   Visibility="{Binding ElementName=Control, Path=IsEditing, Converter={StaticResource VisibilityConverter}, ConverterParameter={x:Static converters:BooleanHelper.False}}">
+			<TextBlock SnapsToDevicePixels="true" Text="{Binding ElementName=Control, Path=Text}"
+                 TextWrapping="{Binding ElementName=Control, Path=TextWrapping}"
+                 Foreground="{Binding ElementName=Control, Path=Foreground}"
+                 FontWeight="{Binding ElementName=Control, Path=FontWeight}"/>
+			<FrameworkElement.Style>
+				<Style TargetType="{x:Type Label}">
+					<Style.Triggers>
+						<DataTrigger Binding="{Binding ElementName=Control, Path=Text}" Value="">
+							<Setter Property="ContentControl.ContentTemplate">
+								<Setter.Value>
+									<DataTemplate>
+										<TextBlock SnapsToDevicePixels="true" Text="{Binding ElementName=Control, Path=TextWhenEmpty}"
+                               TextWrapping="{Binding ElementName=Control, Path=TextWrapping}"
+                               Foreground="{Binding ElementName=Control, Path=Foreground}"
+                               FontWeight="{Binding ElementName=Control, Path=FontWeight}"/>
+									</DataTemplate>
+								</Setter.Value>
+							</Setter>
+						</DataTrigger>
+					</Style.Triggers>
+				</Style>
+			</FrameworkElement.Style>
+		</Label>
+		<TextBox KeyDown="TextBox_KeyDown" Name="TextBox" Margin="0,2,0,2" SnapsToDevicePixels="true" IsVisibleChanged="TextBox_IsVisibleChanged"
+             AcceptsReturn="{Binding ElementName=Control, Path=AcceptsReturn}"
+             Text="{Binding ElementName=Control, Path=Text, UpdateSourceTrigger=Explicit}"
+             TextWrapping="{Binding ElementName=Control, Path=TextWrapping}"
+             IsEnabled="{Binding ElementName=Control, Path=IsEditing}"
+			 Visibility="{Binding ElementName=Control, Path=IsEditing, Converter={StaticResource VisibilityConverter}, ConverterParameter={x:Static converters:BooleanHelper.True}}"/>
+	</StackPanel>
+</UserControl>

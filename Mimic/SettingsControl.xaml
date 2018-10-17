@@ -1,0 +1,27 @@
+﻿<UserControl x:Class="Mimic.SettingsControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+			 xmlns:Controls="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:local="clr-namespace:Mimic"
+             mc:Ignorable="d" 
+             d:DesignHeight="302.839" d:DesignWidth="346.372">
+    <Canvas>
+        <ItemsControl Margin="5">
+            <ItemsControl.ItemContainerStyle>
+                <Style>
+                    <Setter Property="FrameworkElement.Margin" Value="5"/>
+                    <Setter Property="FrameworkElement.HorizontalAlignment" Value="Left"/>
+                </Style>
+            </ItemsControl.ItemContainerStyle>
+
+			<Controls:ToggleSwitch Header="Show change-log after an upgrade" OnLabel="Yes" OffLabel="No" IsChecked="{Binding ShowChangeLogAfterUpgrade}" />
+
+			<Controls:ToggleSwitch Header="Run Scratch integration in background" OnLabel="Yes" OffLabel="No" IsChecked="{Binding RunScratchInBackground}" />
+
+			<Button Style="{StaticResource AccentedSquareButtonStyle}" Command="{Binding ResetCommand}" HorizontalAlignment="Left">Reset all settings</Button>
+
+        </ItemsControl>
+    </Canvas>
+</UserControl>

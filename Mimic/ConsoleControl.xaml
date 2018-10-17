@@ -1,0 +1,56 @@
+﻿<UserControl x:Class="Mimic.ConsoleControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:behaviors="clr-namespace:Mimic.Behaviors"
+             xmlns:viewmodels="clr-namespace:Mimic.ViewModel"
+             xmlns:interactivity="http://schemas.microsoft.com/expression/2010/interactivity" 
+             xmlns:local="clr-namespace:Mimic"
+             mc:Ignorable="d" 
+             d:DesignHeight="305.042" d:DesignWidth="489.076">
+    <UserControl.Resources>
+
+        <Style x:Key="LogMessageStyle" TargetType="TextBlock">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding WasSent}" Value="true">
+                    <Setter Property="Foreground" Value="{Binding Source={x:Static viewmodels:ModuleColors.Teal}}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+    </UserControl.Resources>
+    <Grid>
+        <DockPanel>
+            <TextBox Name="ConsoleInput" DockPanel.Dock="Top" Height="23" Text="{Binding SendText}" FontFamily="Courier New" >
+                <TextBox.InputBindings>
+                    <KeyBinding Key="Return" Command="{Binding SendCommand}" CommandParameter="{Binding ElementName=ConsoleInput, Path=Text}"/>
+                    <KeyBinding Key="Up" Command="{Binding PrevSentCommand}" CommandParameter="{Binding ElementName=ConsoleInput, Path=Text}"/>
+                    <KeyBinding Key="Down" Command="{Binding NextSentCommand}" CommandParameter="{Binding ElementName=ConsoleInput, Path=Text}"/>
+                </TextBox.InputBindings>
+            </TextBox>
+            <StatusBar DockPanel.Dock="Bottom" >
+                <CheckBox IsChecked="{Binding IsLogging}">log</CheckBox>
+                <CheckBox IsChecked="{Binding AutoScroll}">auto scroll</CheckBox>
+                <Button Content="clear log" Command="{Binding ClearLogCommand}" />
+            </StatusBar>
+            <ListView ItemsSource="{Binding Log}" ScrollViewer.VerticalScrollBarVisibility="Visible" FontFamily="Courier New" >
+                <interactivity:Interaction.Behaviors>
+                    <behaviors:AutoScrollBehavior Enabled="{Binding AutoScroll}" ItemsSource="{Binding Log}" />
+                </interactivity:Interaction.Behaviors>
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="Padding" Value="0" />
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Message}" Style="{StaticResource LogMessageStyle}" Padding="0" />
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+
+        </DockPanel>
+    </Grid>
+</UserControl>

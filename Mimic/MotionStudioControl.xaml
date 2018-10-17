@@ -1,0 +1,1126 @@
+﻿<UserControl x:Class="Mimic.MotionStudioControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:behaviors="clr-namespace:zArm.Behaviors;assembly=zArm.Behaviors"
+             xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
+             xmlns:behavior="clr-namespace:Mimic.Behaviors"
+             xmlns:converters="clr-namespace:Mimic.Converters"
+             xmlns:viewmodels="clr-namespace:Mimic.ViewModel"
+             xmlns:adorners="clr-namespace:Mimic.Adorners"
+             xmlns:specialized="clr-namespace:zArm.Api.Specialized;assembly=zArm.Api"
+             xmlns:dd="clr-namespace:GongSolutions.Wpf.DragDrop;assembly=GongSolutions.Wpf.DragDrop"
+             xmlns:interactivity="http://schemas.microsoft.com/expression/2010/interactivity" 
+             xmlns:local="clr-namespace:Mimic"
+             mc:Ignorable="d" 
+             d:DesignHeight="550.574" d:DesignWidth="830.543">
+    <UserControl.Resources>
+        <ResourceDictionary>
+
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Icons.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <SolidColorBrush x:Key="TransparentBrush" Color="Transparent"/>
+
+            <converters:MarginConverter x:Key="MarginConverter" />
+            <converters:IsTypeConverter x:Key="IsTypeConverter" />
+            <converters:PercentConverter x:Key="PercentConverter" />
+            <converters:ColorLuminosityConverter x:Key="ColorLuminosityConverter" />
+
+            <ControlTemplate x:Key="speedthumb">
+                <Rectangle Fill="White" Stroke="Black" StrokeThickness=".5"/>
+            </ControlTemplate>
+
+            <ControlTemplate x:Key="ScrollViewerHorizontalOnTopTemplate" TargetType="{x:Type ScrollViewer}">
+                <Grid x:Name="Grid" Background="{TemplateBinding Background}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" MinHeight="17"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Rectangle x:Name="Corner" 
+                    Fill="{DynamicResource {x:Static SystemColors.ControlBrushKey}}" 
+                    Grid.Column="1" Grid.Row="0"/>
+                    <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Margin="{TemplateBinding Padding}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" Grid.Column="0" Grid.Row="1" CanContentScroll="{TemplateBinding CanContentScroll}" CanHorizontallyScroll="False" CanVerticallyScroll="False"/>
+                    <ScrollBar x:Name="PART_VerticalScrollBar" 
+                    Cursor="Arrow" 
+                    Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" 
+                    Grid.Column="1" Grid.Row="1" 
+                    AutomationProperties.AutomationId="VerticalScrollBar" 
+                    Maximum="{TemplateBinding ScrollableHeight}" 
+                    Minimum="0" 
+                    Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" 
+                    ViewportSize="{TemplateBinding ViewportHeight}"/>
+                    <ScrollBar x:Name="PART_HorizontalScrollBar" 
+                    Cursor="Arrow" 
+                    Grid.Column="0" 
+                    AutomationProperties.AutomationId="HorizontalScrollBar" 
+                    Maximum="{TemplateBinding ScrollableWidth}" 
+                    Minimum="0" 
+                    Value="{Binding HorizontalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" 
+                    Orientation="Horizontal" 
+                    ViewportSize="{TemplateBinding ViewportWidth}"/>
+                </Grid>
+            </ControlTemplate>
+
+        </ResourceDictionary>
+    </UserControl.Resources>
+	<UserControl.InputBindings>
+		<KeyBinding Command="{Binding PlayToggleCommand}" Key="Space" />
+		<KeyBinding Command="{Binding RecordingEdit.InsertCommand}" Key="Insert"/>
+	</UserControl.InputBindings>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="282"/>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="89"/>
+            <RowDefinition/>
+            <RowDefinition Height="275"/>
+        </Grid.RowDefinitions>
+        <local:BackButton HorizontalAlignment="Left" VerticalAlignment="Top" Height="50" Width="50"/>
+
+        <local:SimulationControl Sim="{Binding Sim}" Grid.Row="1" Grid.Column="1" Margin="0,0,10,0"/>
+
+        <StackPanel Grid.Column="1">
+            <TextBlock HorizontalAlignment="Center" x:Name="textBlock" TextWrapping="NoWrap" Text="{Binding Instruction}"  FontSize="20"/>
+
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center">
+                    <ToggleButton Style="{DynamicResource MetroCircleToggleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Keep Servos On" IsChecked="{Binding KeepServosOn}">
+                        <Rectangle Width="22" Height="22" Fill="{Binding Path=Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ToggleButton}}}">
+                            <Rectangle.OpacityMask>
+                                <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_power}" />
+                            </Rectangle.OpacityMask>
+                        </Rectangle>
+                    </ToggleButton>
+                </StackPanel>
+
+				<StackPanel HorizontalAlignment="Center">
+					
+					<StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+						<StackPanel.Style>
+							<Style TargetType="StackPanel">
+								<Setter Property="Visibility" Value="Visible" />
+								<Style.Triggers>
+									<DataTrigger Binding="{Binding State}" Value="{x:Static behaviors:RecordAndPlaybackState.Recording}">
+										<Setter Property="Visibility" Value="Collapsed" />
+									</DataTrigger>
+								</Style.Triggers>
+							</Style>
+						</StackPanel.Style>
+
+						<!--real time-->
+						<Border Margin="10" BorderThickness="2" CornerRadius="4" >
+							<Border.Style>
+								<Style TargetType="Border">
+									<Setter Property="BorderBrush" Value="{StaticResource TransparentBrush}" />
+									<Style.Triggers>
+										<DataTrigger Binding="{Binding SelectedRecordingType}" Value="{x:Static specialized:RecordingType.RealTime}">
+											<DataTrigger.EnterActions>
+												<BeginStoryboard>
+													<Storyboard RepeatBehavior="Forever">
+														<ColorAnimation Storyboard.TargetProperty="BorderBrush.(SolidColorBrush.Color)" From="Transparent" To="Wheat" AutoReverse="True" Duration="0:0:.7" />
+													</Storyboard>
+												</BeginStoryboard>
+											</DataTrigger.EnterActions>
+											<DataTrigger.ExitActions>
+												<BeginStoryboard>
+													<Storyboard >
+														<ColorAnimation Storyboard.TargetProperty="BorderBrush.(SolidColorBrush.Color)" To="Transparent" Duration="0:0:.7" />
+													</Storyboard>
+												</BeginStoryboard>
+											</DataTrigger.ExitActions>
+										</DataTrigger>
+									</Style.Triggers>
+								</Style>
+							</Border.Style>
+							<Button Background="{x:Static viewmodels:ModuleColors.Red}" Command="{Binding BeginRecordingCommand}" CommandParameter="{Binding Source={x:Static specialized:RecordingType.RealTime}}">
+								<StackPanel>
+									<Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+										<Rectangle.OpacityMask>
+											<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_timer}" />
+										</Rectangle.OpacityMask>
+									</Rectangle>
+									<TextBlock Text="Real Time" Typography.Capitals="AllSmallCaps" />
+								</StackPanel>
+							</Button>
+						</Border>
+
+						<!--position-->
+						<Border Margin="10" BorderThickness="2" CornerRadius="4" >
+							<Border.Style>
+								<Style TargetType="Border">
+									<Setter Property="BorderBrush" Value="{StaticResource TransparentBrush}" />
+									<Style.Triggers>
+										<DataTrigger Binding="{Binding SelectedRecordingType}" Value="{x:Static specialized:RecordingType.Position}">
+											<DataTrigger.EnterActions>
+												<BeginStoryboard>
+													<Storyboard RepeatBehavior="Forever">
+														<ColorAnimation Storyboard.TargetProperty="BorderBrush.(SolidColorBrush.Color)" From="Transparent" To="Wheat" AutoReverse="True" Duration="0:0:.7" />
+													</Storyboard>
+												</BeginStoryboard>
+											</DataTrigger.EnterActions>
+											<DataTrigger.ExitActions>
+												<BeginStoryboard>
+													<Storyboard >
+														<ColorAnimation Storyboard.TargetProperty="BorderBrush.(SolidColorBrush.Color)" To="Transparent" Duration="0:0:.7" />
+													</Storyboard>
+												</BeginStoryboard>
+											</DataTrigger.ExitActions>
+										</DataTrigger>
+									</Style.Triggers>
+								</Style>
+							</Border.Style>
+							<Button Background="{x:Static viewmodels:ModuleColors.Yellow}" Command="{Binding BeginRecordingCommand}" CommandParameter="{Binding Source={x:Static specialized:RecordingType.Position}}">
+								<StackPanel>
+									<Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+										<Rectangle.OpacityMask>
+											<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_calendar_future}" />
+										</Rectangle.OpacityMask>
+									</Rectangle>
+									<TextBlock Text="Position" Typography.Capitals="AllSmallCaps" />
+								</StackPanel>
+							</Button>
+						</Border>
+
+						<!--auto position-->
+						<Border Margin="10" BorderThickness="2" CornerRadius="4" >
+							<Border.Style>
+								<Style TargetType="Border">
+									<Setter Property="BorderBrush" Value="{StaticResource TransparentBrush}" />
+									<Style.Triggers>
+										<DataTrigger Binding="{Binding SelectedRecordingType}" Value="{x:Static specialized:RecordingType.AutoPosition}">
+											<DataTrigger.EnterActions>
+												<BeginStoryboard>
+													<Storyboard RepeatBehavior="Forever">
+														<ColorAnimation Storyboard.TargetProperty="BorderBrush.(SolidColorBrush.Color)" From="Transparent" To="Wheat" AutoReverse="True" Duration="0:0:.7" />
+													</Storyboard>
+												</BeginStoryboard>
+											</DataTrigger.EnterActions>
+											<DataTrigger.ExitActions>
+												<BeginStoryboard>
+													<Storyboard >
+														<ColorAnimation Storyboard.TargetProperty="BorderBrush.(SolidColorBrush.Color)" To="Transparent" Duration="0:0:.7" />
+													</Storyboard>
+												</BeginStoryboard>
+											</DataTrigger.ExitActions>
+										</DataTrigger>
+									</Style.Triggers>
+								</Style>
+							</Border.Style>
+							<Button Background="{x:Static viewmodels:ModuleColors.Orange}" Command="{Binding BeginRecordingCommand}" CommandParameter="{Binding Source={x:Static specialized:RecordingType.AutoPosition}}">
+								<StackPanel>
+									<Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+										<Rectangle.OpacityMask>
+											<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_calendar_future}" />
+										</Rectangle.OpacityMask>
+									</Rectangle>
+									<TextBlock Text="Automatic Position" Typography.Capitals="AllSmallCaps" />
+								</StackPanel>
+							</Button>
+						</Border>
+
+						<!--pick and place-->
+						<Border Margin="10" BorderThickness="2" CornerRadius="4" >
+							<Border.Style>
+								<Style TargetType="Border">
+									<Setter Property="BorderBrush" Value="{StaticResource TransparentBrush}" />
+									<Style.Triggers>
+										<DataTrigger Binding="{Binding SelectedRecordingType}" Value="{x:Static specialized:RecordingType.PickAndPlace}">
+											<DataTrigger.EnterActions>
+												<BeginStoryboard>
+													<Storyboard RepeatBehavior="Forever">
+														<ColorAnimation Storyboard.TargetProperty="BorderBrush.(SolidColorBrush.Color)" From="Transparent" To="Wheat" AutoReverse="True" Duration="0:0:.7" />
+													</Storyboard>
+												</BeginStoryboard>
+											</DataTrigger.EnterActions>
+											<DataTrigger.ExitActions>
+												<BeginStoryboard>
+													<Storyboard >
+														<ColorAnimation Storyboard.TargetProperty="BorderBrush.(SolidColorBrush.Color)" To="Transparent" Duration="0:0:.7" />
+													</Storyboard>
+												</BeginStoryboard>
+											</DataTrigger.ExitActions>
+										</DataTrigger>
+									</Style.Triggers>
+								</Style>
+							</Border.Style>
+							<Button Background="{x:Static viewmodels:ModuleColors.Blue}" Command="{Binding BeginRecordingCommand}" CommandParameter="{Binding Source={x:Static specialized:RecordingType.PickAndPlace}}">
+								<StackPanel>
+									<Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+										<Rectangle.OpacityMask>
+											<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_brick}" />
+										</Rectangle.OpacityMask>
+									</Rectangle>
+									<TextBlock Text="Pick and Place" Typography.Capitals="AllSmallCaps" />
+								</StackPanel>
+							</Button>
+						</Border>
+
+					</StackPanel>
+
+					<StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+						<StackPanel.Style>
+							<Style TargetType="StackPanel">
+								<Setter Property="Visibility" Value="Collapsed" />
+								<Style.Triggers>
+									<DataTrigger Binding="{Binding State}" Value="{x:Static behaviors:RecordAndPlaybackState.Recording}">
+										<Setter Property="Visibility" Value="Visible" />
+									</DataTrigger>
+								</Style.Triggers>
+							</Style>
+						</StackPanel.Style>
+
+						<Button Margin="10" Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Stop" Command="{Binding StopRecordingCommand}">
+							<Rectangle Width="18" Height="18" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+								<Rectangle.OpacityMask>
+									<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_control_stop}" />
+								</Rectangle.OpacityMask>
+							</Rectangle>
+						</Button>
+
+						<Button Margin="10" Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Cancel" Command="{Binding CancelRecordingCommand}">
+							<Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+								<Rectangle.OpacityMask>
+									<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_cancel}" />
+								</Rectangle.OpacityMask>
+							</Rectangle>
+						</Button>
+
+					</StackPanel>
+					
+				</StackPanel>
+			</DockPanel>
+
+            
+        </StackPanel>
+
+        <DockPanel Grid.Row="1">
+
+            <StackPanel Orientation="Horizontal"  DockPanel.Dock="Top">
+                <Button Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="30" Height="30" ToolTip="Back Folder" Command="{Binding BackFolderCommand}">
+                    <Rectangle Width="12" Height="12" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+                        <Rectangle.OpacityMask>
+                            <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_arrow_left}" />
+                        </Rectangle.OpacityMask>
+                    </Rectangle>
+                </Button>
+                <TextBlock VerticalAlignment="Center" Text="{Binding SelectedRecordingFolder.FullPath}" FontSize="16" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal"  DockPanel.Dock="Top">
+
+                <Button Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="New Folder" Command="{Binding NewFolderCommand}">
+                    <Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+                        <Rectangle.OpacityMask>
+                            <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_folder_star}" />
+                        </Rectangle.OpacityMask>
+                    </Rectangle>
+                </Button>
+
+                <Button Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Remove" Command="{Binding RemoveCommand}">
+                    <Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+                        <Rectangle.LayoutTransform>
+                            <ScaleTransform ScaleX="-1" />
+                        </Rectangle.LayoutTransform>
+                        <Rectangle.OpacityMask>
+                            <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_arrow_corner_up_right}" />
+                        </Rectangle.OpacityMask>
+                    </Rectangle>
+                </Button>
+
+                <Button Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Rename" Command="{Binding RenameCommand}">
+                    <Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+                        <Rectangle.OpacityMask>
+                            <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_edit}" />
+                        </Rectangle.OpacityMask>
+                    </Rectangle>
+                </Button>
+
+                <Button Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Copy" Command="{Binding CopyCommand}">
+                    <Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+                        <Rectangle.OpacityMask>
+                            <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_page_copy}" />
+                        </Rectangle.OpacityMask>
+                    </Rectangle>
+                </Button>
+
+                <Button Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Delete" Command="{Binding DeleteCommand}">
+                    <Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+                        <Rectangle.OpacityMask>
+                            <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_delete}" />
+                        </Rectangle.OpacityMask>
+                    </Rectangle>
+                </Button>
+
+            </StackPanel>
+
+            <ListView BorderThickness="0" ItemsSource="{Binding SelectedRecordingFolder.Items}" SelectedValue="{Binding SelectedRecording}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" dd:DragDrop.IsDragSource="True" dd:DragDrop.IsDropTarget="True" dd:DragDrop.DropHandler="{Binding}">
+                <i:Interaction.Behaviors>
+                    <behavior:EventToCommandBehavior Command="{Binding SelectionChangedCommand}" Event="SelectionChanged" PassArguments="True" />
+                </i:Interaction.Behaviors>
+				<ListView.InputBindings>
+					<KeyBinding Command="{Binding DeleteCommand}" Key="Delete"/>
+					<KeyBinding Command="{Binding RenameCommand}" Key="Return"/>
+				</ListView.InputBindings>
+				<ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Template" >
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <ContentPresenter />
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+
+                <ListBox.Resources>
+
+                    <DataTemplate DataType="{x:Type viewmodels:RecordingVM}">
+                        <Border Name="Border" Padding="5,9,5,5" CornerRadius="4" Background="{x:Static viewmodels:ModuleColors.Background}">
+                            <StackPanel Width="70">
+								<Rectangle x:Name="IconColor" Width="50" Height="50" Fill="{x:Static viewmodels:ModuleColors.Red}">
+									<Rectangle.OpacityMask>
+										<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_timer}" />
+									</Rectangle.OpacityMask>
+								</Rectangle>
+								<local:EditableTextBlock Text="{Binding Name}" IsEditing="{Binding IsEditingName, Mode=TwoWay}" TextWrapping="Wrap">
+									<i:Interaction.Behaviors>
+										<behavior:EventToCommandBehavior Command="{Binding DataContext.RenameAttemptCommand, RelativeSource={RelativeSource AncestorType=ListView}}" Event="TextChanging" PassArguments="True" />
+									</i:Interaction.Behaviors>
+								</local:EditableTextBlock>
+							</StackPanel>
+                        </Border>
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ListBoxItem}}, Path=IsMouseOver}" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="DimGray" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ListBoxItem}}, Path=IsSelected}" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{x:Static viewmodels:ModuleColors.Orange}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding RecordingType}" Value="{x:Static specialized:RecordingType.RealTime}">
+                                <Setter TargetName="IconColor" Property="Fill" Value="{x:Static viewmodels:ModuleColors.Red}" />
+                                <Setter TargetName="IconColor" Property="OpacityMask">
+                                    <Setter.Value>
+                                        <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_timer}" />
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding RecordingType}" Value="{x:Static specialized:RecordingType.Position}">
+                                <Setter TargetName="IconColor" Property="Fill" Value="{x:Static viewmodels:ModuleColors.Yellow}" />
+                                <Setter TargetName="IconColor" Property="OpacityMask">
+                                    <Setter.Value>
+                                        <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_calendar_future}" />
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding RecordingType}" Value="{x:Static specialized:RecordingType.AutoPosition}">
+                                <Setter TargetName="IconColor" Property="Fill" Value="{x:Static viewmodels:ModuleColors.Yellow}" />
+                                <Setter TargetName="IconColor" Property="OpacityMask">
+                                    <Setter.Value>
+                                        <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_calendar_future}" />
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding RecordingType}" Value="{x:Static specialized:RecordingType.PickAndPlace}">
+                                <Setter TargetName="IconColor" Property="Fill" Value="{x:Static viewmodels:ModuleColors.Blue}" />
+                                <Setter TargetName="IconColor" Property="OpacityMask">
+                                    <Setter.Value>
+                                        <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_brick}" />
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+
+                    <DataTemplate DataType="{x:Type viewmodels:RecordingFolderVM}">
+                        <Border Name="Border" Padding="5" CornerRadius="4">
+                            <controls:Badged Badge="{Binding Count}" Margin="0,4,0,0">
+                                <i:Interaction.Behaviors>
+                                    <behavior:EventToCommandBehavior Command="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ListView}}, Path=DataContext.RecordingDoubleClickCommand}" Event="MouseDoubleClick" PassArguments="True" />
+                                </i:Interaction.Behaviors>
+                                <StackPanel Width="70">
+									<Rectangle Width="50" Height="50" Fill="White">
+										<Rectangle.OpacityMask>
+											<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_folder}" />
+										</Rectangle.OpacityMask>
+									</Rectangle>
+									<local:EditableTextBlock Text="{Binding Name}" IsEditing="{Binding IsEditingName, Mode=TwoWay}" TextWrapping="Wrap">
+										<i:Interaction.Behaviors>
+											<behavior:EventToCommandBehavior Command="{Binding DataContext.RenameAttemptCommand, RelativeSource={RelativeSource AncestorType=ListView}}" Event="TextChanging" PassArguments="True" />
+										</i:Interaction.Behaviors>
+									</local:EditableTextBlock>
+								</StackPanel>
+                            </controls:Badged>
+                        </Border>
+                        <DataTemplate.Triggers>
+                            <DataTrigger Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ListBoxItem}}, Path=IsMouseOver}" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="DimGray" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ListBoxItem}}, Path=IsSelected}" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{x:Static viewmodels:ModuleColors.Orange}" />
+                            </DataTrigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
+
+                </ListBox.Resources>
+            </ListView>
+        </DockPanel>
+
+        <DockPanel Grid.Row="2" Grid.ColumnSpan="2">
+            <DockPanel.Style>
+                <Style TargetType="DockPanel">
+                    <Setter Property="IsEnabled" Value="False" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding CanPlayback}" Value="True">
+                            <Setter Property="IsEnabled" Value="True" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DockPanel.Style>
+
+            <Button VerticalAlignment="Center" Margin="10" DockPanel.Dock="Left" HorizontalAlignment="Left" Width="50" Height="50" ToolTip="Play" Command="{Binding PlayToggleCommand}">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource MetroCircleButtonStyle}">
+                        <Setter Property="Content">
+                            <Setter.Value>
+                                <Rectangle Width="25" Margin="5,0,0,0" Height="25" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+                                    <Rectangle.OpacityMask>
+                                        <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_control_play}" />
+                                    </Rectangle.OpacityMask>
+                                </Rectangle>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                <Setter Property="Content">
+                                    <Setter.Value>
+                                        <Rectangle Width="20" Margin="0,0,0,0" Height="20" Fill="White">
+                                            <Rectangle.OpacityMask>
+                                                <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_control_stop}" />
+                                            </Rectangle.OpacityMask>
+                                        </Rectangle>
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+
+            </Button>
+
+            <DockPanel DockPanel.Dock="Top">
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"  DockPanel.Dock="Right">
+
+					<Button Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Update Target" Command="{Binding RecordingEdit.UpdateTargetCommand}">
+						<Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+							<Rectangle.OpacityMask>
+								<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_crosshair}" />
+							</Rectangle.OpacityMask>
+						</Rectangle>
+					</Button>
+
+					<local:DropDownButton Style="{DynamicResource MetroCircleToggleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Servos Recorded..." Command="{Binding RecordingEdit.ServosRecordedCommand}">
+						<local:DropDownButton.Menu>
+							<ContextMenu>
+								<i:Interaction.Behaviors>
+									<behavior:EventToCommandBehavior Command="{Binding RecordingEdit.ServosRecordedClosedCommand}" Event="Closed" PassArguments="False" />
+								</i:Interaction.Behaviors>
+								<MenuItem Command="{Binding RecordingEdit.ClearServoRecorded5Command}" Header="{Binding RecordingEdit.ClearServoRecorded5Command.DisplayName}"/>
+								<MenuItem Command="{Binding RecordingEdit.ClearServoRecorded4Command}" Header="{Binding RecordingEdit.ClearServoRecorded4Command.DisplayName}"/>
+								<MenuItem Command="{Binding RecordingEdit.ClearServoRecorded3Command}" Header="{Binding RecordingEdit.ClearServoRecorded3Command.DisplayName}"/>
+								<MenuItem Command="{Binding RecordingEdit.ClearServoRecorded2Command}" Header="{Binding RecordingEdit.ClearServoRecorded2Command.DisplayName}"/>
+								<MenuItem Command="{Binding RecordingEdit.ClearServoRecorded1Command}" Header="{Binding RecordingEdit.ClearServoRecorded1Command.DisplayName}"/>
+							</ContextMenu>
+						</local:DropDownButton.Menu>
+						<Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=ToggleButton}, Path=Foreground}">
+							<Rectangle.OpacityMask>
+								<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_key}" />
+							</Rectangle.OpacityMask>
+						</Rectangle>
+					</local:DropDownButton>
+
+					<Button Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Rename" Command="{Binding RecordingEdit.RenameCommand}">
+						<Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+							<Rectangle.OpacityMask>
+								<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_edit}" />
+							</Rectangle.OpacityMask>
+						</Rectangle>
+					</Button>
+
+                    <Button Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Insert" Command="{Binding RecordingEdit.InsertCommand}">
+                        <Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+                            <Rectangle.OpacityMask>
+                                <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_add}" />
+                            </Rectangle.OpacityMask>
+                        </Rectangle>
+                    </Button>
+
+					<Button Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Copy" Command="{Binding RecordingEdit.CopyCommand}">
+						<Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+							<Rectangle.OpacityMask>
+								<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_page_copy}" />
+							</Rectangle.OpacityMask>
+						</Rectangle>
+					</Button>
+
+					<Button Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Slice" Command="{Binding RecordingEdit.SliceCommand}">
+						<Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+							<Rectangle.OpacityMask>
+								<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_slice}" />
+							</Rectangle.OpacityMask>
+						</Rectangle>
+					</Button>
+
+					<local:DropDownButton Style="{DynamicResource MetroCircleToggleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Convert To..." Command="{Binding RecordingEdit.ConvertToCommand}">
+						<local:DropDownButton.Menu>
+							<ContextMenu>
+								<MenuItem Command="{Binding RecordingEdit.ConvertToRealTimeCommand}" Header="Convert To Real Time">
+									<MenuItem.Icon>
+										<Rectangle Width="22" Height="22" Fill="{x:Static viewmodels:ModuleColors.Red}">
+											<Rectangle.OpacityMask>
+												<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_timer}" />
+											</Rectangle.OpacityMask>
+										</Rectangle>
+									</MenuItem.Icon>
+								</MenuItem>
+								<MenuItem Command="{Binding RecordingEdit.ConvertToPositionCommand}" Header="Convert To Position">
+									<MenuItem.Icon>
+										<Rectangle Width="22" Height="22" Fill="{x:Static viewmodels:ModuleColors.Yellow}">
+											<Rectangle.OpacityMask>
+												<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_calendar_future}" />
+											</Rectangle.OpacityMask>
+										</Rectangle>
+									</MenuItem.Icon>
+								</MenuItem>
+								<MenuItem Command="{Binding RecordingEdit.ConvertToSafetyCommand}" Header="Convert To Safety">
+									<MenuItem.Icon>
+										<Rectangle Width="22" Height="22" Fill="{x:Static viewmodels:ModuleColors.Blue}">
+											<Rectangle.OpacityMask>
+												<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_brick}" />
+											</Rectangle.OpacityMask>
+										</Rectangle>
+									</MenuItem.Icon>
+								</MenuItem>
+								<MenuItem Command="{Binding RecordingEdit.ConvertToPickCommand}" Header="Convert To Pick">
+									<MenuItem.Icon>
+										<Rectangle Width="22" Height="22" Fill="{x:Static viewmodels:ModuleColors.Blue}">
+											<Rectangle.OpacityMask>
+												<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_brick}" />
+											</Rectangle.OpacityMask>
+										</Rectangle>
+									</MenuItem.Icon>
+								</MenuItem>
+								<MenuItem Command="{Binding RecordingEdit.ConvertToPlaceCommand}" Header="Convert To Place">
+									<MenuItem.Icon>
+										<Rectangle Width="22" Height="22" Fill="{x:Static viewmodels:ModuleColors.Blue}">
+											<Rectangle.OpacityMask>
+												<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_brick}" />
+											</Rectangle.OpacityMask>
+										</Rectangle>
+									</MenuItem.Icon>
+								</MenuItem>
+							</ContextMenu>
+						</local:DropDownButton.Menu>
+						<Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=ToggleButton}, Path=Foreground}">
+							<Rectangle.OpacityMask>
+								<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_swap}" />
+							</Rectangle.OpacityMask>
+						</Rectangle>
+					</local:DropDownButton>
+
+					<Button Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Delete" Command="{Binding RecordingEdit.DeleteCommand}">
+						<Rectangle Width="22" Height="22" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+							<Rectangle.OpacityMask>
+								<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_delete}" />
+							</Rectangle.OpacityMask>
+						</Rectangle>
+					</Button>
+
+					<Button Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="42" Height="42" ToolTip="Save" Command="{Binding RecordingEdit.SaveCommand}">
+                        <Rectangle Width="20" Height="20" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+                            <Rectangle.OpacityMask>
+                                <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_disk}" />
+                            </Rectangle.OpacityMask>
+                        </Rectangle>
+                    </Button>
+
+                </StackPanel>
+            </DockPanel>
+            <StackPanel Margin="0,0,10,0" VerticalAlignment="Center">
+                <DockPanel>
+
+                    <StackPanel>
+
+						<ScrollViewer VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Visible" Template="{StaticResource ScrollViewerHorizontalOnTopTemplate}">
+
+                            <Grid Height="160">
+
+                                <ListView BorderThickness="0" ItemsSource="{Binding RecordingEdit.Movements}" SelectedValue="{Binding RecordingEdit.Selected}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled" dd:DragDrop.IsDragSource="{Binding RecordingEdit.DragDropEnabled}" dd:DragDrop.IsDropTarget="{Binding RecordingEdit.DragDropEnabled}" dd:DragDrop.DropHandler="{Binding RecordingEdit}">
+									<i:Interaction.Behaviors>
+										<behavior:EventToCommandBehavior Command="{Binding RecordingEdit.SelectionChangedCommand}" Event="SelectionChanged" PassArguments="True" />
+										<behavior:ScrollIntoViewBehavior SelectedItem="{Binding RecordingEdit.Selected}" />
+									</i:Interaction.Behaviors>
+									<ListView.InputBindings>
+										<KeyBinding Command="{Binding RecordingEdit.DeleteCommand}" Key="Delete"/>
+										<KeyBinding Command="{Binding RecordingEdit.RenameCommand}" Key="Return"/>
+									</ListView.InputBindings>
+									<ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Template" >
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <ContentPresenter />
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                    <ListBox.Resources>
+
+                                        <Style x:Key="TransparentStyle" TargetType="{x:Type Button}">
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="Transparent">
+                                                            <ContentPresenter/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+
+                                        <DataTemplate x:Key="PositionHeader">
+											<Grid DataContext="{Binding RelativeSource={RelativeSource Mode=FindAncestor,AncestorType=ContentControl},Path=DataContext}">
+												<Button BorderThickness="0" Style="{DynamicResource TransparentStyle}" Command="{Binding ShuttleToCommand}" ToolTip="entry position">
+													<Button.InputBindings>
+														<MouseBinding Command="{Binding SetTargetCommand}" MouseAction="RightClick" />
+													</Button.InputBindings>
+													<Grid>
+														<Path Margin="0,1" Data="M 0 0 10 10 0 20 110 20 120 10 110 0 0 0">
+															<Path.Style>
+																<Style TargetType="Path">
+																	<Setter Property="Fill" Value="{x:Static viewmodels:ModuleColors.Red}" />
+																	<Style.Triggers>
+																		<Trigger Property="IsMouseOver" Value="True">
+																			<Setter Property="Fill" Value="Red"/>
+																		</Trigger>
+																	</Style.Triggers>
+																</Style>
+															</Path.Style>
+														</Path>
+														<Rectangle Width="16" Height="16" Margin="97,-1,0,0" Fill="Blue">
+															<Rectangle.Style>
+																<Style TargetType="Rectangle">
+																	<Setter Property="Visibility" Value="Hidden" />
+																	<Style.Triggers>
+																		<DataTrigger Binding="{Binding UpdatingTarget}" Value="True">
+																			<Setter Property="Visibility" Value="Visible" />
+																		</DataTrigger>
+																	</Style.Triggers>
+																</Style>
+															</Rectangle.Style>
+															<Rectangle.OpacityMask>
+																<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_crosshair}" />
+															</Rectangle.OpacityMask>
+														</Rectangle>
+													</Grid>
+												</Button>
+												<local:EditableTextBlock Foreground="White" Text="{Binding Description}" IsEditing="{Binding IsEditingName, Mode=TwoWay}" HorizontalContentAlignment="Center" Margin="0,-4,20,0" FontWeight="Bold">
+													<local:EditableTextBlock.Effect>
+														<DropShadowEffect ShadowDepth="0" Color="Black" BlurRadius="8" Opacity="1"/>
+													</local:EditableTextBlock.Effect>
+												</local:EditableTextBlock>
+											</Grid>
+										</DataTemplate>
+
+                                        <DataTemplate x:Key="PositionFooter">
+											<StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DataContext="{Binding RelativeSource={RelativeSource Mode=FindAncestor,AncestorType=ContentControl},Path=DataContext}">
+												<Button Margin="0,0,5,0" Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="30" Height="30" ToolTip="Replace with New Recording" Command="{Binding NewRecordingCommand}">
+													<Rectangle Width="12" Height="12" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+														<Rectangle.OpacityMask>
+															<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_timer}" />
+														</Rectangle.OpacityMask>
+													</Rectangle>
+												</Button>
+												<Button Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="30" Height="30" ToolTip="Remove Wait Times" Command="{Binding NormalizeWaitTimeCommand}">
+													<Rectangle Width="12" Height="12" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+														<Rectangle.OpacityMask>
+															<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_draw_pen_minus}" />
+														</Rectangle.OpacityMask>
+													</Rectangle>
+												</Button>
+											</StackPanel>
+                                        </DataTemplate>
+
+                                        <DataTemplate x:Key="MoveHeader">
+                                            <Grid DataContext="{Binding RelativeSource={RelativeSource Mode=FindAncestor,AncestorType=ContentControl},Path=DataContext}">
+												<Path Margin="0,0,0,1" Stroke="LightGray" StrokeThickness="2" Data="M 0 0 10 10 M 0 20 10 10 M 8 10 93 10 M 87 5 94 10 87 15"/>
+												<Button BorderThickness="0" Style="{DynamicResource TransparentStyle}" Margin="100,0,0,0" Command="{Binding ShuttleToCommand}" ToolTip="target position">
+													<Button.InputBindings>
+														<MouseBinding Command="{Binding SetTargetCommand}" MouseAction="RightClick" />
+													</Button.InputBindings>
+													<Grid>
+														<Path Data="M 10 0 20 10 10 20 0 10 10 0">
+															<Path.Style>
+																<Style TargetType="Path">
+																	<Setter Property="Fill" Value="{x:Static viewmodels:ModuleColors.Yellow}" />
+																	<Style.Triggers>
+																		<DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Grid,AncestorLevel=1}, Path=IsMouseOver}" Value="True">
+																			<Setter Property="Fill" Value="Yellow"/>
+																		</DataTrigger>
+																	</Style.Triggers>
+																</Style>
+															</Path.Style>
+														</Path>
+														<Rectangle Width="16" Height="16" Margin="-1,-1,0,0" Fill="Blue">
+															<Rectangle.Style>
+																<Style TargetType="Rectangle">
+																	<Setter Property="Visibility" Value="Hidden" />
+																	<Style.Triggers>
+																		<DataTrigger Binding="{Binding UpdatingTarget}" Value="True">
+																			<Setter Property="Visibility" Value="Visible" />
+																		</DataTrigger>
+																	</Style.Triggers>
+																</Style>
+															</Rectangle.Style>
+															<Rectangle.OpacityMask>
+																<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_crosshair}" />
+															</Rectangle.OpacityMask>
+														</Rectangle>
+													</Grid>
+												</Button>
+												<local:EditableTextBlock Foreground="White" Text="{Binding Description}" IsEditing="{Binding IsEditingName, Mode=TwoWay}" HorizontalContentAlignment="Center" Margin="0,-4,20,0" FontWeight="Bold">
+													<local:EditableTextBlock.Effect>
+														<DropShadowEffect ShadowDepth="0" Color="Black" BlurRadius="8" Opacity="1"/>
+													</local:EditableTextBlock.Effect>
+												</local:EditableTextBlock>
+											</Grid>
+                                        </DataTemplate>
+
+                                        <DataTemplate x:Key="MoveFooter">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DataContext="{Binding RelativeSource={RelativeSource Mode=FindAncestor,AncestorType=ContentControl},Path=DataContext}">
+                                                <ToggleButton Style="{DynamicResource MetroCircleToggleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="30" Height="30" ToolTip="Synchronized" IsChecked="{Binding IsSynchronized}">
+                                                    <Rectangle Width="12" Height="12" Fill="{Binding Path=Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ToggleButton}}}">
+                                                        <Rectangle.OpacityMask>
+                                                            <VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_vector_line_curve}" />
+                                                        </Rectangle.OpacityMask>
+                                                    </Rectangle>
+                                                </ToggleButton>
+                                            </StackPanel>
+                                        </DataTemplate>
+
+										<DataTemplate x:Key="SafetyHeader">
+											<Grid DataContext="{Binding RelativeSource={RelativeSource Mode=FindAncestor,AncestorType=ContentControl},Path=DataContext}">
+												<Path Margin="0,0,0,1" Stroke="LightGray" StrokeThickness="2" Data="M 0 0 10 10 M 0 20 10 10 M 8 10 93 10 M 87 5 94 10 87 15"/>
+												<Button BorderThickness="0" Style="{DynamicResource TransparentStyle}" Margin="100,0,0,0" Command="{Binding ShuttleToCommand}" ToolTip="target position">
+													<Button.InputBindings>
+														<MouseBinding Command="{Binding SetTargetCommand}" MouseAction="RightClick" />
+													</Button.InputBindings>
+													<Grid>
+														<Path Data="M 10 0 20 10 10 20 0 10 10 0">
+															<Path.Style>
+																<Style TargetType="Path">
+																	<Setter Property="Fill" Value="{x:Static viewmodels:ModuleColors.Blue}" />
+																	<Style.Triggers>
+																		<DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Grid,AncestorLevel=1}, Path=IsMouseOver}" Value="True">
+																			<Setter Property="Fill" Value="Blue"/>
+																		</DataTrigger>
+																	</Style.Triggers>
+																</Style>
+															</Path.Style>
+														</Path>
+														<Rectangle Width="16" Height="16" Margin="-1,-1,0,0" Fill="Wheat">
+															<Rectangle.Style>
+																<Style TargetType="Rectangle">
+																	<Setter Property="Visibility" Value="Hidden" />
+																	<Style.Triggers>
+																		<DataTrigger Binding="{Binding UpdatingTarget}" Value="True">
+																			<Setter Property="Visibility" Value="Visible" />
+																		</DataTrigger>
+																	</Style.Triggers>
+																</Style>
+															</Rectangle.Style>
+															<Rectangle.OpacityMask>
+																<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_crosshair}" />
+															</Rectangle.OpacityMask>
+														</Rectangle>
+													</Grid>
+												</Button>
+												<local:EditableTextBlock Foreground="White" Text="{Binding Description}" IsEditing="{Binding IsEditingName, Mode=TwoWay}" HorizontalContentAlignment="Center" Margin="0,-4,20,0" FontWeight="Bold">
+													<local:EditableTextBlock.Effect>
+														<DropShadowEffect ShadowDepth="0" Color="Black" BlurRadius="8" Opacity="1"/>
+													</local:EditableTextBlock.Effect>
+												</local:EditableTextBlock>
+											</Grid>
+										</DataTemplate>
+
+										<DataTemplate x:Key="PickHeader">
+											<Grid DataContext="{Binding RelativeSource={RelativeSource Mode=FindAncestor,AncestorType=ContentControl},Path=DataContext}">
+												<Path Margin="0,0,0,1" Stroke="LightGray" StrokeThickness="2" Data="M 20 0 30 10 M 20 20 30 10 M 28 10 93 10 M 87 5 94 10 87 15"/>
+												<Button BorderThickness="0" Style="{DynamicResource TransparentStyle}" Margin="0,0,100,0" Command="{Binding ShuttleToCommand}" CommandParameter="secondary" ToolTip="entry position">
+													<Button.InputBindings>
+														<MouseBinding Command="{Binding SetTargetCommand}" MouseAction="RightClick" CommandParameter="secondary" />
+													</Button.InputBindings>
+													<Grid>
+														<Path Data="M 10 0 20 10 15 15 10 10 5 15 0 10 10 0">
+															<Path.Style>
+																<Style TargetType="Path">
+																	<Setter Property="Fill" Value="{x:Static viewmodels:ModuleColors.Blue}" />
+																	<Style.Triggers>
+																		<DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Grid,AncestorLevel=1}, Path=IsMouseOver}" Value="True">
+																			<Setter Property="Fill" Value="Blue"/>
+																		</DataTrigger>
+																	</Style.Triggers>
+																</Style>
+															</Path.Style>
+														</Path>
+														<Rectangle Width="16" Height="16" Margin="-1,0,0,0" Fill="Wheat">
+															<Rectangle.Style>
+																<Style TargetType="Rectangle">
+																	<Setter Property="Visibility" Value="Hidden" />
+																	<Style.Triggers>
+																		<DataTrigger Binding="{Binding UpdatingSecondaryTarget}" Value="True">
+																			<Setter Property="Visibility" Value="Visible" />
+																		</DataTrigger>
+																	</Style.Triggers>
+																</Style>
+															</Rectangle.Style>
+															<Rectangle.OpacityMask>
+																<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_crosshair}" />
+															</Rectangle.OpacityMask>
+														</Rectangle>
+													</Grid>
+												</Button>
+												<Button BorderThickness="0" Style="{DynamicResource TransparentStyle}" Margin="100,0,0,0" Command="{Binding ShuttleToCommand}" ToolTip="target position">
+													<Button.InputBindings>
+														<MouseBinding Command="{Binding SetTargetCommand}" MouseAction="RightClick" />
+													</Button.InputBindings>
+													<Grid>
+														<Path Data="M 10 0 20 10 15 15 10 10 5 15 0 10 10 0">
+															<Path.Style>
+																<Style TargetType="Path">
+																	<Setter Property="Fill" Value="{x:Static viewmodels:ModuleColors.Blue}" />
+																	<Style.Triggers>
+																		<DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Grid,AncestorLevel=1}, Path=IsMouseOver}" Value="True">
+																			<Setter Property="Fill" Value="Blue"/>
+																		</DataTrigger>
+																	</Style.Triggers>
+																</Style>
+															</Path.Style>
+														</Path>
+														<Rectangle Width="16" Height="16" Margin="-1,0,0,0" Fill="Wheat">
+															<Rectangle.Style>
+																<Style TargetType="Rectangle">
+																	<Setter Property="Visibility" Value="Hidden" />
+																	<Style.Triggers>
+																		<DataTrigger Binding="{Binding UpdatingTarget}" Value="True">
+																			<Setter Property="Visibility" Value="Visible" />
+																		</DataTrigger>
+																	</Style.Triggers>
+																</Style>
+															</Rectangle.Style>
+															<Rectangle.OpacityMask>
+																<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_crosshair}" />
+															</Rectangle.OpacityMask>
+														</Rectangle>
+													</Grid>
+												</Button>
+												<local:EditableTextBlock Foreground="White" Text="{Binding Description}" IsEditing="{Binding IsEditingName, Mode=TwoWay}" HorizontalContentAlignment="Center" Margin="20,-4,20,0" FontWeight="Bold">
+													<local:EditableTextBlock.Effect>
+														<DropShadowEffect ShadowDepth="0" Color="Black" BlurRadius="8" Opacity="1"/>
+													</local:EditableTextBlock.Effect>
+												</local:EditableTextBlock>
+											</Grid>
+										</DataTemplate>
+
+										<DataTemplate x:Key="PlaceHeader">
+											<Grid DataContext="{Binding RelativeSource={RelativeSource Mode=FindAncestor,AncestorType=ContentControl},Path=DataContext}">
+												<Path Margin="0,0,0,1" Stroke="LightGray" StrokeThickness="2" Data="M 20 0 30 10 M 20 20 30 10 M 28 10 93 10 M 87 5 94 10 87 15"/>
+												<Button BorderThickness="0" Style="{DynamicResource TransparentStyle}" Margin="0,0,100,0" Command="{Binding ShuttleToCommand}" CommandParameter="secondary" ToolTip="entry position">
+													<Button.InputBindings>
+														<MouseBinding Command="{Binding SetTargetCommand}" MouseAction="RightClick" CommandParameter="secondary" />
+													</Button.InputBindings>
+													<Grid>
+														<Path Data="M 10 10 15 5 20 10 10 20 0 10 5 5 10 10">
+															<Path.Style>
+																<Style TargetType="Path">
+																	<Setter Property="Fill" Value="{x:Static viewmodels:ModuleColors.Blue}" />
+																	<Style.Triggers>
+																		<DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Grid,AncestorLevel=1}, Path=IsMouseOver}" Value="True">
+																			<Setter Property="Fill" Value="Blue"/>
+																		</DataTrigger>
+																	</Style.Triggers>
+																</Style>
+															</Path.Style>
+														</Path>
+														<Rectangle Width="16" Height="16" Margin="-1,-1,0,0" Fill="Wheat">
+															<Rectangle.Style>
+																<Style TargetType="Rectangle">
+																	<Setter Property="Visibility" Value="Hidden" />
+																	<Style.Triggers>
+																		<DataTrigger Binding="{Binding UpdatingSecondaryTarget}" Value="True">
+																			<Setter Property="Visibility" Value="Visible" />
+																		</DataTrigger>
+																	</Style.Triggers>
+																</Style>
+															</Rectangle.Style>
+															<Rectangle.OpacityMask>
+																<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_crosshair}" />
+															</Rectangle.OpacityMask>
+														</Rectangle>
+													</Grid>
+												</Button>
+												<Button BorderThickness="0" Style="{DynamicResource TransparentStyle}" Margin="100,0,0,0" Command="{Binding ShuttleToCommand}" ToolTip="target position">
+													<Button.InputBindings>
+														<MouseBinding Command="{Binding SetTargetCommand}" MouseAction="RightClick" />
+													</Button.InputBindings>
+													<Grid>
+														<Path Data="M 10 10 15 5 20 10 10 20 0 10 5 5 10 10">
+															<Path.Style>
+																<Style TargetType="Path">
+																	<Setter Property="Fill" Value="{x:Static viewmodels:ModuleColors.Blue}" />
+																	<Style.Triggers>
+																		<DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Grid,AncestorLevel=1}, Path=IsMouseOver}" Value="True">
+																			<Setter Property="Fill" Value="Blue"/>
+																		</DataTrigger>
+																	</Style.Triggers>
+																</Style>
+															</Path.Style>
+														</Path>
+														<Rectangle Width="16" Height="16" Margin="-1,-1,0,0" Fill="Wheat">
+															<Rectangle.Style>
+																<Style TargetType="Rectangle">
+																	<Setter Property="Visibility" Value="Hidden" />
+																	<Style.Triggers>
+																		<DataTrigger Binding="{Binding UpdatingTarget}" Value="True">
+																			<Setter Property="Visibility" Value="Visible" />
+																		</DataTrigger>
+																	</Style.Triggers>
+																</Style>
+															</Rectangle.Style>
+															<Rectangle.OpacityMask>
+																<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_crosshair}" />
+															</Rectangle.OpacityMask>
+														</Rectangle>
+													</Grid>
+												</Button>
+												<local:EditableTextBlock Foreground="White" Text="{Binding Description}" IsEditing="{Binding IsEditingName, Mode=TwoWay}" HorizontalContentAlignment="Center" Margin="20,-4,20,0" FontWeight="Bold">
+													<local:EditableTextBlock.Effect>
+														<DropShadowEffect ShadowDepth="0" Color="Black" BlurRadius="8" Opacity="1"/>
+													</local:EditableTextBlock.Effect>
+												</local:EditableTextBlock>
+											</Grid>
+										</DataTemplate>
+
+										<DataTemplate x:Key="PickPlaceFooter">
+											<StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DataContext="{Binding RelativeSource={RelativeSource Mode=FindAncestor,AncestorType=ContentControl},Path=DataContext}">
+												<Button Margin="0,0,5,0" Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="30" Height="30" ToolTip="Center entry position above target position moving only the upper arm" Command="{Binding SetSecondaryTargetOverTargetCommand}" CommandParameter="simple">
+													<Rectangle Width="12" Height="12" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+														<Rectangle.OpacityMask>
+															<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_refresh_counterclockwise_up}" />
+														</Rectangle.OpacityMask>
+													</Rectangle>
+												</Button>
+												<Button Margin="0,0,5,0" Style="{DynamicResource MetroCircleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="30" Height="30" ToolTip="Center entry position above target position" Command="{Binding SetSecondaryTargetOverTargetCommand}">
+													<Rectangle Width="12" Height="12" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+														<Rectangle.OpacityMask>
+															<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_arrow_up}" />
+														</Rectangle.OpacityMask>
+													</Rectangle>
+												</Button>
+												<ToggleButton Style="{DynamicResource MetroCircleToggleButtonStyle}" HorizontalAlignment="Left" VerticalAlignment="Top" Width="30" Height="30" ToolTip="Synchronized" IsChecked="{Binding IsSynchronized}">
+													<Rectangle Width="12" Height="12" Fill="{Binding Path=Foreground, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ToggleButton}}}">
+														<Rectangle.OpacityMask>
+															<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_vector_line_curve}" />
+														</Rectangle.OpacityMask>
+													</Rectangle>
+												</ToggleButton>
+											</StackPanel>
+										</DataTemplate>
+
+										<DataTemplate DataType="{x:Type viewmodels:MovementVM}">
+                                            <Border Name="Border" Padding="0,3" CornerRadius="4" Background="{x:Static viewmodels:ModuleColors.Background}">
+                                                <Grid Width="120" Height="160">
+                                                    <Rectangle HorizontalAlignment="Left" Fill="Black" Opacity=".2" Width="{Binding PercentComplete, Converter={StaticResource PercentConverter}, ConverterParameter=120}" />
+                                                    <DockPanel>
+                                                        <ContentControl Name="Header" DockPanel.Dock="Top" HorizontalAlignment="Center" />
+                                                        <ContentControl Name="Footer" DockPanel.Dock="Bottom" HorizontalAlignment="Stretch" VerticalAlignment="Top" Margin="0,0,0,4" />
+                                                        <Polyline HorizontalAlignment="Center" Stretch="None" Points="0,100 0,0 58,0 116,0 116,100" FillRule="Nonzero" Fill="Gray" Stroke="white" Opacity=".5" StrokeThickness=".5" >
+                                                            <i:Interaction.Behaviors>
+                                                                <behavior:AdornerBehavior AdornerFactory="{Binding}" />
+                                                            </i:Interaction.Behaviors>
+                                                        </Polyline>
+                                                    </DockPanel>
+                                                </Grid>
+                                            </Border>
+                                            <DataTemplate.Triggers>
+
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ListBoxItem}}, Path=IsMouseOver}" Value="True">
+                                                    <Setter TargetName="Border" Property="Background" Value="DimGray" />
+                                                </DataTrigger>
+												<DataTrigger Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ListBoxItem}}, Path=IsSelected}" Value="True">
+													<Setter TargetName="Border" Property="Background" Value="{x:Static viewmodels:ModuleColors.Orange}" />
+												</DataTrigger>
+												<DataTrigger Binding="{Binding Converter={StaticResource IsTypeConverter}}" Value="{x:Type viewmodels:PositionVM}">
+                                                    <Setter TargetName="Header" Property="ContentTemplate" Value="{StaticResource PositionHeader}" />
+                                                    <Setter TargetName="Footer" Property="ContentTemplate" Value="{StaticResource PositionFooter}" />
+                                                </DataTrigger>
+												<DataTrigger Binding="{Binding Converter={StaticResource IsTypeConverter}}" Value="{x:Type viewmodels:MoveVM}">
+													<Setter TargetName="Header" Property="ContentTemplate" Value="{StaticResource MoveHeader}" />
+													<Setter TargetName="Footer" Property="ContentTemplate" Value="{StaticResource MoveFooter}" />
+												</DataTrigger>
+												<DataTrigger Binding="{Binding Converter={StaticResource IsTypeConverter}}" Value="{x:Type viewmodels:PickVM}">
+													<Setter TargetName="Header" Property="ContentTemplate" Value="{StaticResource PickHeader}" />
+													<Setter TargetName="Footer" Property="ContentTemplate" Value="{StaticResource PickPlaceFooter}" />
+												</DataTrigger>
+												<DataTrigger Binding="{Binding Converter={StaticResource IsTypeConverter}}" Value="{x:Type viewmodels:PlaceVM}">
+													<Setter TargetName="Header" Property="ContentTemplate" Value="{StaticResource PlaceHeader}" />
+													<Setter TargetName="Footer" Property="ContentTemplate" Value="{StaticResource PickPlaceFooter}" />
+												</DataTrigger>
+												<DataTrigger Binding="{Binding Converter={StaticResource IsTypeConverter}}" Value="{x:Type viewmodels:SafetyVM}">
+													<Setter TargetName="Header" Property="ContentTemplate" Value="{StaticResource SafetyHeader}" />
+													<Setter TargetName="Footer" Property="ContentTemplate" Value="{StaticResource MoveFooter}" />
+												</DataTrigger>
+											</DataTemplate.Triggers>
+                                        </DataTemplate>
+
+                                    </ListBox.Resources>
+                                </ListView>
+                            </Grid>
+                        </ScrollViewer>
+
+                        <Slider Margin="0,10,0,10" Style="{DynamicResource FlatSlider}" Minimum="0" Maximum="1" SmallChange=".001" LargeChange=".1" Value="{Binding PlaybackPosition}" />
+
+                    </StackPanel>
+                </DockPanel>
+
+            </StackPanel>
+
+        </DockPanel>
+
+
+    </Grid>
+</UserControl>

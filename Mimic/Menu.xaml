@@ -1,0 +1,151 @@
+﻿<UserControl x:Class="Mimic.Menu"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:Controls="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:i="clr-namespace:System.Windows.Interactivity;assembly=System.Windows.Interactivity"
+             xmlns:behaviors="clr-namespace:Mimic.Behaviors"
+             xmlns:local="clr-namespace:Mimic"
+             xmlns:converters="clr-namespace:Mimic.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="293.277" d:DesignWidth="505.882">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Resources/Icons.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <converters:ColorLuminosityConverter x:Key="ColorLuminosityConverter" />
+            <converters:ResourceIconConverter x:Key="ResourceIconConverter" />
+            <converters:ResourceImageConverter x:Key="ResourceImageConverter" />
+
+            <Style x:Key="MenuTile" TargetType="Controls:Tile">
+                <Setter Property="Width" Value="147" />
+                <Setter Property="Height" Value="125" />
+                <Setter Property="TitleFontSize" Value="10" />
+                <Setter Property="Margin" Value="3" />
+                <Setter Property="Background" Value="{Binding BackgroundColor}" />
+                <Setter Property="BorderBrush" Value="{Binding BorderColor}" />
+                <Setter Property="BorderThickness" Value="2" />
+                <Setter Property="Command" Value="{Binding SelectedCommand}" />
+                <Setter Property="Title" Value="{Binding Name}" />
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value=".25" />
+                    </Trigger>
+                    <DataTrigger Binding="{Binding DarkText}" Value="true">
+                        <Setter Property="Foreground" Value="Black" />
+                    </DataTrigger>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="BorderBrush" Value="{Binding BorderColor, Converter={StaticResource ColorLuminosityConverter}, ConverterParameter=1.5 }" />
+                    </Trigger>
+                    <DataTrigger Binding="{Binding LargeTile}" Value="true">
+                        <Setter Property="Width" Value="300" />
+                        <Setter Property="Height" Value="125" />
+                        <Setter Property="TitleFontSize" Value="10" />
+                    </DataTrigger>
+					<DataTrigger Binding="{Binding ControlType}" Value="{x:Null}">
+						<Setter Property="IsEnabled" Value="false" />
+					</DataTrigger>
+					<DataTrigger Binding="{Binding Alert}" Value="True">
+						<DataTrigger.EnterActions>
+							<BeginStoryboard>
+								<Storyboard RepeatBehavior="Forever">
+									<ColorAnimation Storyboard.TargetProperty="BorderBrush.(SolidColorBrush.Color)" From="Transparent" To="Wheat" AutoReverse="True" Duration="0:0:.7" />
+								</Storyboard>
+							</BeginStoryboard>
+						</DataTrigger.EnterActions>
+						<DataTrigger.ExitActions>
+							<BeginStoryboard>
+								<Storyboard >
+									<ColorAnimation Storyboard.TargetProperty="BorderBrush.(SolidColorBrush.Color)" From="Transparent" To="Transparent" Duration="0:0:.7" />
+								</Storyboard>
+							</BeginStoryboard>
+						</DataTrigger.ExitActions>
+					</DataTrigger>
+				</Style.Triggers>
+            </Style>
+
+            <Style x:Key="MenuText" TargetType="TextBlock">
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="HorizontalAlignment" Value="Center" />
+                <Setter Property="TextAlignment" Value="Center" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="Width" Value="140" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding ControlType}" Value="{x:Null}">
+                        <Setter Property="Text" Value="Coming Soon" />
+                    </DataTrigger>
+                    <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                            <Condition Binding="{Binding RobotRequired}" Value="true" />
+                            <Condition Binding="{Binding IsEnabled, RelativeSource={RelativeSource Self}}" Value="false" />
+                            <Condition Binding="{Binding RobotRequired}" Value="true" />
+                        </MultiDataTrigger.Conditions>
+                        <Setter Property="Text" Value="{Binding DisabledReason}" />
+                    </MultiDataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="MenuIcon" TargetType="Rectangle">
+                <Setter Property="Width" Value="50" />
+                <Setter Property="Height" Value="50" />
+                <Setter Property="Fill" Value="White" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding ControlType}" Value="{x:Null}">
+                        <Setter Property="Visibility" Value="Hidden" />
+                    </DataTrigger>
+                    <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                            <Condition Binding="{Binding RobotRequired}" Value="true" />
+                            <Condition Binding="{Binding IsEnabled, RelativeSource={RelativeSource Self}}" Value="false" />
+                        </MultiDataTrigger.Conditions>
+                        <Setter Property="Visibility" Value="Hidden" />
+                    </MultiDataTrigger>
+                </Style.Triggers>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid>
+        <ScrollViewer>
+            <ItemsControl Name="MenuItems" ItemsSource="{Binding ModuleColumns}">
+                <i:Interaction.Behaviors>
+                    <behaviors:EventToCommandBehavior Command="{Binding ModuleSizeChangedCommand}" Event="SizeChanged" PassArguments="True" />
+                </i:Interaction.Behaviors>
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <ItemsControl ItemsSource="{Binding}" Margin="3" Width="330" >
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Controls:Tile Style="{StaticResource MenuTile}">
+                                        <Grid Name="grid">
+                                            <Image Source="{Binding ImageName, Converter={StaticResource ResourceImageConverter}}" />
+                                            <Rectangle Style="{StaticResource MenuIcon}">
+                                                <Rectangle.OpacityMask>
+                                                    <VisualBrush Stretch="Uniform" Visual="{Binding IconName, Converter={StaticResource ResourceIconConverter}}" />
+                                                </Rectangle.OpacityMask>
+                                            </Rectangle>
+                                            <TextBlock Style="{StaticResource MenuText}" >
+                                            </TextBlock>
+                                        </Grid>
+                                    </Controls:Tile>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

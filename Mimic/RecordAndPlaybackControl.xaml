@@ -1,0 +1,110 @@
+﻿<UserControl x:Class="Mimic.RecordAndPlaybackControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+			 xmlns:viewmodels="clr-namespace:Mimic.ViewModel"
+             xmlns:local="clr-namespace:Mimic"
+             mc:Ignorable="d" 
+             d:DesignHeight="307.988" d:DesignWidth="358.58">
+	<UserControl.Resources>
+		<ResourceDictionary>
+			<ResourceDictionary.MergedDictionaries>
+				<ResourceDictionary Source="Resources/Icons.xaml" />
+			</ResourceDictionary.MergedDictionaries>
+		</ResourceDictionary>
+	</UserControl.Resources>
+	<Grid>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="59"/>
+			<ColumnDefinition/>
+			<ColumnDefinition Width="5*"/>
+		</Grid.ColumnDefinitions>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="8*"/>
+		</Grid.RowDefinitions>
+		<local:BackButton HorizontalAlignment="Left" VerticalAlignment="Top" Height="50" Width="50"/>
+
+		<local:SimulationControl Sim="{Binding Sim}" Grid.Column="2"  />
+
+		<Button VerticalAlignment="Top" Margin="0,123,0,0" HorizontalAlignment="Left" Width="50" Height="50" ToolTip="Play" Command="{Binding PlayToggleCommand}">
+			<Button.Style>
+				<Style TargetType="Button" BasedOn="{StaticResource MetroCircleButtonStyle}">
+					<Setter Property="Content">
+						<Setter.Value>
+							<Rectangle Width="25" Margin="5,0,0,0" Height="25" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+								<Rectangle.OpacityMask>
+									<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_control_play}" />
+								</Rectangle.OpacityMask>
+							</Rectangle>
+						</Setter.Value>
+					</Setter>
+					<Style.Triggers>
+						<DataTrigger Binding="{Binding IsPlaying}" Value="True">
+							<Setter Property="Content">
+								<Setter.Value>
+									<Rectangle Width="20" Margin="0,0,0,0" Height="20" Fill="White">
+										<Rectangle.OpacityMask>
+											<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_control_stop}" />
+										</Rectangle.OpacityMask>
+									</Rectangle>
+								</Setter.Value>
+							</Setter>
+						</DataTrigger>
+					</Style.Triggers>
+				</Style>
+			</Button.Style>
+
+		</Button>
+
+		<Button VerticalAlignment="Top" Margin="0,68,0,0" HorizontalAlignment="Left" Width="50" Height="50" ToolTip="Record" Command="{Binding RecordToggleCommand}">
+			<Button.Style>
+				<Style TargetType="Button" BasedOn="{StaticResource MetroCircleButtonStyle}">
+					<Setter Property="Content">
+						<Setter.Value>
+							<Rectangle Width="25" Height="25" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}">
+								<Rectangle.OpacityMask>
+									<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_location_circle}" />
+								</Rectangle.OpacityMask>
+							</Rectangle>
+						</Setter.Value>
+					</Setter>
+					<Style.Triggers>
+						<DataTrigger Binding="{Binding IsRecording}" Value="True">
+							<Setter Property="Content">
+								<Setter.Value>
+									<Rectangle Width="20" Margin="0,0,0,0" Height="20" Fill="White">
+										<Rectangle.OpacityMask>
+											<VisualBrush Stretch="Uniform" Visual="{StaticResource appbar_control_stop}" />
+										</Rectangle.OpacityMask>
+									</Rectangle>
+								</Setter.Value>
+							</Setter>
+						</DataTrigger>
+					</Style.Triggers>
+				</Style>
+			</Button.Style>
+
+		</Button>
+
+		<DockPanel Margin="0,178,0,0">
+			<Label DockPanel.Dock="Top">
+				<TextBlock>Playback<LineBreak/>Speed</TextBlock>
+			</Label>
+			<Slider  Style="{DynamicResource FlatSlider}" Minimum="0" Maximum="100" SmallChange="1" LargeChange="10" Value="{Binding PlaybackSpeed}" Margin="0,0,0,10" Orientation="Vertical" />
+		</DockPanel>
+
+		<TextBlock TextWrapping="Wrap" Grid.Column="1">
+			Hold down the robots button for 2 seconds to record
+			<LineBreak/>
+			<LineBreak/>
+			Press the button to play
+			<LineBreak/>
+			<LineBreak/>
+			Turn the knob to change speed
+		</TextBlock>
+
+
+
+	</Grid>
+</UserControl>
